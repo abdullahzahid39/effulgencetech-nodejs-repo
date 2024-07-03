@@ -7,6 +7,24 @@ pipeline {
     }
 
     stages {
+        // Check if Docker is available
+        stage('Check Docker') {
+            steps {
+                script {
+                    def dockerVersion = sh(returnStdout: true, script: 'docker --version || true').trim()
+                    if (dockerVersion.isEmpty()) {
+                        echo 'Docker is not installed. Installing Docker...'
+                        sh 'curl -fsSL https://get.docker.com -o get-docker.sh'
+                        sh 'sudo sh get-docker.sh'
+                        sh 'sudo usermod -aG docker $USER'
+                        echo 'Docker installed successfully.'
+                    } else {
+                        echo "Docker is already installed: ${dockerVersion}"
+                    }
+                }
+            }
+        }
+
         // Cloning the project repository from GitHub
         stage('Git checkout') {
             steps {
@@ -18,15 +36,19 @@ pipeline {
         // Building the Docker image and tagging it with the build number
         stage('Build-Image') {
             steps {
-                sh 'docker build -t $IMAGE_REPO_NAME:$BUILD_NUMBER .'
-                sh 'docker images'
+                script {
+                    def dockerImage = docker.build("${IMAGE_REPO_NAME}:${BUILD_NUMBER}")
+                    echo 'Docker image built:'
+                    sh 'docker images'
+                }
             }
         }
 
         // Running the Docker container from the built image
         stage('Build-Container') {
             steps {
-                sh 'docker run --name $CONTAINER_NAME-$BUILD_NUMBER -p 8089:8080 -d $IMAGE_REPO_NAME:$BUILD_NUMBER'
+                sh "docker run --name ${CONTAINER_NAME}-${BUILD_NUMBER} -p 8089:8080 -d ${IMAGE_REPO_NAME}:${BUILD_NUMBER}"
+                echo 'Docker container running:'
                 sh 'docker ps'
             }
         }
