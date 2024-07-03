@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('DOCKERHUB_CREDENTIALS')
         IMAGE_REPO_NAME = "abdullahzahid39/effulgencetech-nodejs-img"
         CONTAINER_NAME = "effulgencetech-nodejs-cont"
     }
@@ -24,25 +23,11 @@ pipeline {
             }
         }
 
-        // Logging into Docker Hub using credentials stored in Jenkins
-        stage('Login to Dockerhub') {
-            steps {
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-            }
-        }
-
         // Running the Docker container from the built image
         stage('Build-Container') {
             steps {
                 sh 'docker run --name $CONTAINER_NAME-$BUILD_NUMBER -p 8089:8080 -d $IMAGE_REPO_NAME:$BUILD_NUMBER'
                 sh 'docker ps'
-            }
-        }
-
-        // Pushing the Docker image to Docker Hub
-        stage('Push to Dockerhub') {
-            steps {
-                sh 'docker push $IMAGE_REPO_NAME:$BUILD_NUMBER'
             }
         }
     }
