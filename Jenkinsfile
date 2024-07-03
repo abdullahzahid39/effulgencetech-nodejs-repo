@@ -1,75 +1,58 @@
+pipeline {
+    agent any
 
-//def COLOR_MAP = [
-//    'SUCCESS': 'good', 
-//    'FAILURE': 'danger',
-//]
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('DOCKERHUB_CREDENTIALS')
+        IMAGE_REPO_NAME = "abdullahzahid39/effulgencetech-nodejs-img"
+        CONTAINER_NAME = "effulgencetech-nodejs-cont"
+    }
 
-pipeline{
+    stages {
+        // Cloning the project repository from GitHub
+        stage('Git checkout') {
+            steps {
+                echo 'Cloning project codebase...'
+                git branch: 'main', url: 'https://github.com/abdullahzahid39/effulgencetech-nodejs-repo.git'
+            }
+        }
 
-	agent any
+        // Building the Docker image and tagging it with the build number
+        stage('Build-Image') {
+            steps {
+                sh 'docker build -t $IMAGE_REPO_NAME:$BUILD_NUMBER .'
+                sh 'docker images'
+            }
+        }
 
-	//rename the user name michaelgwei86 with the username of your dockerhub repo
-	environment {
-		DOCKERHUB_CREDENTIALS=credentials('DOCKERHUB_CREDENTIALS')
-		IMAGE_REPO_NAME = "michaelgwei86/effulgencetech-nodejs-img"
-		CONTAINER_NAME= "effulgencetech-nodejs-cont-"
-	}
-	
-//Downloading files into repo
-	stages {
-		stage('Git checkout') {
-            		steps {
-                		echo 'Cloning project codebase...'
-                		git branch: 'main', url: 'https://github.com/Michaelgwei86/effulgencetech-nodejs-repo.git'
-            		}
-        	}
-	
-//Building and tagging our Docker image
+        // Logging into Docker Hub using credentials stored in Jenkins
+        stage('Login to Dockerhub') {
+            steps {
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+            }
+        }
 
-		stage('Build-Image') {
-			
-			steps {
-				//sh 'docker build -t michaelgwei86/effulgencetech-nodejs-image:$BUILD_NUMBER .'
-				sh 'docker build -t $IMAGE_REPO_NAME:$BUILD_NUMBER .'
-				sh 'docker images'
-			}
-		}
-		
-//Logging into Dockerhub
-		stage('Login to Dockerhub') {
+        // Running the Docker container from the built image
+        stage('Build-Container') {
+            steps {
+                sh 'docker run --name $CONTAINER_NAME-$BUILD_NUMBER -p 8089:8080 -d $IMAGE_REPO_NAME:$BUILD_NUMBER'
+                sh 'docker ps'
+            }
+        }
 
-			steps {
-				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
+        // Pushing the Docker image to Docker Hub
+        stage('Push to Dockerhub') {
+            steps {
+                sh 'docker push $IMAGE_REPO_NAME:$BUILD_NUMBER'
+            }
+        }
+    }
 
-//Building and tagging our Docker container
-		stage('Build-Container') {
-
-			steps {
-				//sh 'docker run --name effulgencetech-node-cont-$BUILD_NUMBER -p 8082:8080 -d michaelgwei86/effulgencetech-nodejs-image:$BUILD_NUMBER'
-				sh 'docker run --name $CONTAINER_NAME-$BUILD_NUMBER -p 8089:8080 -d $IMAGE_REPO_NAME:$BUILD_NUMBER'
-				sh 'docker ps'
-			}
-		}
-
-//Pushing the image to the docker
-
-		stage('Push to Dockerhub') {
-			//Pushing image to dockerhub
-			steps {
-				//sh 'docker push michaelgwei86/effulgencetech-nodejs-image:$BUILD_NUMBER'
-				sh 'docker push $IMAGE_REPO_NAME:$BUILD_NUMBER'
-			}
-		}
-        
-	}
-
-  //  post { 
-       // always { 
-         //   echo 'I will always say Hello again!'
-      //      slackSend channel: '#developers', color: COLOR_MAP[currentBuild.currentResult], message: "*${currentBuild.currentResult}:*, Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
-    //    }
-  //  }
-
+    // Optional: Post actions to notify on build success or failure
+    post {
+        always {
+            echo 'Pipeline execution completed!'
+            // Uncomment and configure the following line if you want to send notifications, e.g., via Slack
+            // slackSend channel: '#developers', color: COLOR_MAP[currentBuild.currentResult], message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \nMore info at: ${env.BUILD_URL}"
+        }
+    }
 }
