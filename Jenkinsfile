@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_REPO_NAME = "abdullahzahid39/effulgencetech-nodejs-img"
+        IMAGE_REPO_NAME = "https://github.com/abdullahzahid39/effulgencetech-nodejs-repo"
         CONTAINER_NAME = "effulgencetech-nodejs-cont"
     }
 
